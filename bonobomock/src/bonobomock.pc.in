@@ -1,0 +1,14 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: bonobomock
+Description: Bloomberg Mock Library
+Version: @PROJECT_VERSION@
+Requires: bsl bdl gmock
+# On Solaris built with SunPro, bonobomock's symbol resolver calls cplus_demangle()
+# from the system libdemangle, so anything linking bonobomock must also link it. The
+# trailing token resolves to " -ldemangle" there and to nothing otherwise (GCC/Clang
+# builds, including GCC on Solaris, embed the demangler into the archive instead).
+Libs: -L${libdir} -lbonobomock@BONOBOMOCK_PC_PUBLIC_LIBS@
+Cflags: -I${includedir}

@@ -1,0 +1,126 @@
+name: "🐞 Bug Report"
+description: "Report an issue with BonoboMock."
+title: "[Bug]: <short description of issue>"
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug! Please provide enough details to help us reproduce and diagnose the issue.
+
+  # --- Environment & Platform ---
+  - type: input
+    id: bitness
+    attributes:
+      label: Bitness
+      description: "System bitness (e.g., 64-bit, 32-bit)."
+      placeholder: "e.g., 64-bit"
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform (CPU architecture, Operating System)
+      description: "Example: Linux x86_64, macOS ARM64, Unix SPARC/Sun/Solaris, Windows x86."
+      placeholder: "e.g., Linux x86_64"
+    validations:
+      required: true
+
+  # --- Toolchain & Build ---
+  - type: input
+    id: compiler
+    attributes:
+      label: Compiler name and version
+      description: "Example: GCC 13.2, Clang 18, MSVC 2022 (19.40.x)."
+      placeholder: "e.g., GCC 13.2"
+    validations:
+      required: true
+
+  - type: input
+    id: build_system
+    attributes:
+      label: Build system / toolchain
+      description: "Example: CMake 3.30, Bazel, Make."
+      placeholder: "e.g., CMake 3.30"
+    validations:
+      required: true
+
+  - type: input
+    id: build_type
+    attributes:
+      label: Build type
+      description: "Example: Debug, Release, RelWithDebInfo."
+      placeholder: "e.g., RelWithDebInfo"
+    validations:
+      required: true
+
+  - type: textarea
+    id: custom_toolchains
+    attributes:
+      label: Custom toolchains or instrumentation
+      description: "Mention any special setups such as coverage tools, sanitizers, custom allocators, or flags like -fno-exceptions or -flto."
+      placeholder: "e.g., gcov/llvm-cov, ASan/UBSan, -fno-exceptions, -flto"
+
+  # --- Bug Description & Repro ---
+  - type: textarea
+    id: bug_description
+    attributes:
+      label: Describe the bug
+      description: |
+        Explain the issue in detail. Describe what you expected to happen and what actually happened.
+        If there is an exception, paste the stack trace.  
+        Include minimal code or commands needed to reproduce.
+      placeholder: |
+        Steps to reproduce:
+        1. ...
+        2. ...
+        Exception / stack trace (if any):
+        ```
+        <paste here>
+        ```
+    validations:
+      required: true
+
+  - type: input
+    id: frequency
+    attributes:
+      label: Frequency
+      description: "Does it always happen or intermittently? (e.g., always, often, rare, non-deterministic)"
+      placeholder: "e.g., always"
+    validations:
+      required: true
+
+  # --- Code References ---
+  - type: textarea
+    id: link_mocked_function
+    attributes:
+      label: Link to the function you are mocking (if applicable)
+      description: "Provide a GitHub or code link."
+      placeholder: "https://github.com/owner/repo/path/to/file.hpp#L123"
+
+  - type: textarea
+    id: link_code_under_test
+    attributes:
+      label: Link to the code under test
+      description: "Provide a GitHub or code link to the relevant function or file."
+      placeholder: "https://github.com/owner/repo/path/to/production_code.cpp#L45"
+
+  - type: textarea
+    id: link_test_code
+    attributes:
+      label: Link to the test code
+      description: "Provide a GitHub or code link to the relevant test case."
+      placeholder: "https://github.com/owner/repo/tests/test_case.cpp#L10"
+
+  # --- Final Checks ---
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: "I have searched existing issues and discussions for duplicates."
+          required: true
+        - label: "I can share additional logs or a minimal reproducer if requested."
+          required: false

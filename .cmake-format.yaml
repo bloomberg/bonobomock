@@ -1,0 +1,40 @@
+# Configuration for cmake-format (https://github.com/cheshirekow/cmake_format).
+# Used both by the CI `cmake-format` check and by the `make format` /
+# `make check-format` targets.
+parse:
+  # Teach cmake-format the signatures of the project's custom commands so their
+  # keyword arguments are grouped and wrapped sensibly instead of one per line.
+  additional_commands:
+    # Defined in cmake/BonoboMockLibrary.cmake; called from each library's CMakeLists.txt.
+    bonobomock_install_dev_package:
+      kwargs:
+        TYPE: 1
+        DESCRIPTION: 1
+        COMPONENT: 1
+        PC_PUBLIC_LIBS: 1
+        CPS_REQUIRES: "*"
+        CPS_REQUIRES_NON_NAMESPACED: "*"
+        CPS_LINK_LIBRARIES: "*"
+    # Defined in cmake/BonoboMockLibrary.cmake; internal helper of
+    # bonobomock_install_dev_package.
+    _bonobomock_install_cps_file:
+      kwargs:
+        TARGET: 1
+        TYPE: 1
+        DESCRIPTION: 1
+        COMPONENT: 1
+        REQUIRES: "*"
+        REQUIRES_NON_NAMESPACED: "*"
+        LINK_LIBRARIES: "*"
+format:
+  # Keep the line width in line with the C++ style (.clang-format / clang-format).
+  line_width: 100
+  # Indent continuations with 4 spaces, matching the existing CMake and C++ style.
+  tab_size: 4
+  # Do not put closing parens on their own line.
+  dangle_parens: false
+markup:
+  # Do not reflow the contents of comments; this preserves the Apache license
+  # header and the explanatory comments verbatim.
+  enable_markup: false
+  first_comment_is_literal: true

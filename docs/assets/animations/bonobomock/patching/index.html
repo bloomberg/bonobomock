@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BonoboMock - How Monkeypatching Works</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="animation-container">
+    <svg id="animation-svg" viewBox="0 0 1200 735" xmlns="http://www.w3.org/2000/svg">
+      <title>How BonoboMock patches functions at runtime</title>
+      <desc>Animated diagram showing BonoboMock's monkeypatching process: saving original bytes, writing JMP instructions, intercepting calls, and restoring on cleanup.</desc>
+
+      <!-- Background with subtle hex pattern -->
+      <defs>
+        <pattern id="hex-pattern" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
+          <polygon points="30,2 54,15 54,37 30,50 6,37 6,15"
+                   fill="none" stroke="#222244" stroke-width="0.5" opacity="0.4"/>
+        </pattern>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#f5e6c8"/>
+        </marker>
+        <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#e8a838"/>
+        </marker>
+        <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#4caf50"/>
+        </marker>
+      </defs>
+
+      <rect width="1200" height="735" fill="#1a1a2e" rx="12"/>
+      <rect width="1200" height="735" fill="url(#hex-pattern)" rx="12"/>
+
+      <!-- ==================== SCENE 1: The Problem ==================== -->
+      <g id="scene1-group" opacity="0">
+        <text id="scene1-title" x="600" y="55" text-anchor="middle"
+              font-family="Segoe UI, system-ui, sans-serif" font-size="26" font-weight="700"
+              fill="#f5e6c8" opacity="0">The Problem</text>
+
+        <!-- Function box -->
+        <g id="scene1-function-box" opacity="0">
+          <rect x="200" y="120" width="400" height="280" rx="10"
+                fill="#22223a" stroke="#555580" stroke-width="2"/>
+          <text x="400" y="155" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="14" fill="#a89e88">// A regular C++ function</text>
+          <text x="400" y="195" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="18" fill="#f5e6c8" font-weight="700">int foo(int a, int b) {</text>
+          <text x="400" y="225" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="18" fill="#f5e6c8">    return a + b;</text>
+          <text x="400" y="255" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="18" fill="#f5e6c8">}</text>
+
+          <!-- "Not virtual" label -->
+          <rect x="270" y="290" width="260" height="36" rx="6" fill="#2a2a3e" stroke="#e74c3c" stroke-width="1.5"/>
+          <text x="400" y="314" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="14" fill="#e74c3c">No virtual keyword!</text>
+
+          <!-- Memory bytes preview -->
+          <text x="400" y="370" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="12" fill="#a89e88">Memory: 0x55 0x48 0x89 0xE5 0x53 ...</text>
+        </g>
+
+        <!-- gmock approach -->
+        <g id="scene1-gmock" opacity="0">
+          <rect x="720" y="160" width="300" height="160" rx="10"
+                fill="#22223a" stroke="#555580" stroke-width="2"/>
+          <text x="870" y="200" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="20" fill="#a89e88" font-weight="600">gMock</text>
+          <text x="870" y="230" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88">Requires virtual functions</text>
+          <text x="870" y="255" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88">and interface inheritance</text>
+
+          <!-- Arrow from gmock to function -->
+          <line x1="720" y1="240" x2="620" y2="240"
+                stroke="#a89e88" stroke-width="2" stroke-dasharray="6 4"
+                marker-end="url(#arrowhead)"/>
+        </g>
+
+        <!-- Red X -->
+        <g id="scene1-red-x" opacity="0">
+          <circle cx="640" cy="240" r="28" fill="none" stroke="#e74c3c" stroke-width="3"/>
+          <line x1="622" y1="222" x2="658" y2="258" stroke="#e74c3c" stroke-width="4" stroke-linecap="round"/>
+          <line x1="658" y1="222" x2="622" y2="258" stroke="#e74c3c" stroke-width="4" stroke-linecap="round"/>
+        </g>
+
+        <!-- Fail text -->
+        <text id="scene1-fail-text" x="870" y="295" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="16" fill="#e74c3c" font-weight="600" opacity="0">
+          Can't mock non-virtual!</text>
+
+        <!-- BonoboMock solution teaser -->
+        <g id="scene1-solution" opacity="0">
+          <rect x="680" y="400" width="380" height="70" rx="10"
+                fill="#22223a" stroke="#e8a838" stroke-width="2"/>
+          <text x="870" y="430" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="18" fill="#e8a838" font-weight="700">BonoboMock patches the binary</text>
+          <text x="870" y="452" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88">No virtual functions needed</text>
+        </g>
+      </g>
+
+      <!-- ==================== SCENE 2: BONOBO_MOCK Setup ==================== -->
+      <g id="scene2-group" opacity="0">
+        <text id="scene2-title" x="600" y="55" text-anchor="middle"
+              font-family="Segoe UI, system-ui, sans-serif" font-size="26" font-weight="700"
+              fill="#f5e6c8" opacity="0">BONOBO_MOCK(&amp;foo)</text>
+
+        <!-- Code snippet -->
+        <g id="scene2-code" opacity="0">
+          <rect x="80" y="100" width="520" height="200" rx="10"
+                fill="#22223a" stroke="#555580" stroke-width="2"/>
+          <text x="100" y="135" font-family="Courier New, monospace" font-size="13" fill="#a89e88">// Create mock - patches foo() at runtime</text>
+          <text x="100" y="165" font-family="Courier New, monospace" font-size="16" fill="#f5e6c8">
+            <tspan fill="#e8a838">auto</tspan> mock = <tspan fill="#e8a838">BONOBO_MOCK</tspan>(&amp;foo);</text>
+          <text x="100" y="200" font-family="Courier New, monospace" font-size="13" fill="#a89e88">// Set expectations (gMock compatible)</text>
+          <text x="100" y="230" font-family="Courier New, monospace" font-size="16" fill="#f5e6c8">
+            <tspan fill="#4caf50">EXPECT_CALL</tspan>(*mock, <tspan fill="#e8a838">BONOBO_MOCK_FUNCTION</tspan>(_, _))</text>
+          <text x="120" y="260" font-family="Courier New, monospace" font-size="16" fill="#f5e6c8">
+            .WillOnce(<tspan fill="#4caf50">Return</tspan>(42));</text>
+        </g>
+
+        <!-- Flow arrows -->
+        <g id="scene2-flow" opacity="0">
+          <text x="340" y="340" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88">MockCreator</text>
+          <line x1="340" y1="310" x2="340" y2="350" stroke="#555580" stroke-width="1.5"/>
+          <text x="340" y="390" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88">Mock constructor</text>
+          <line x1="340" y1="350" x2="340" y2="400" stroke="#555580" stroke-width="1.5"/>
+          <text x="340" y="440" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#e8a838">Patch::setup()</text>
+          <!-- Arrow pointing right to monkey -->
+          <path d="M420,430 Q520,430 620,380" stroke="#e8a838" stroke-width="2" fill="none"
+                marker-end="url(#arrowhead-orange)"/>
+        </g>
+
+        <!-- Monkey mascot (actual mascot image) -->
+        <image id="scene2-monkey" href="bonobomock_mascot_transparent.png"
+               x="700" y="200" width="350" height="230"
+               preserveAspectRatio="xMidYMid meet" opacity="0"/>
+      </g>
+
+      <!-- ==================== SCENE 3: The Patch ==================== -->
+      <g id="scene3-group" opacity="0">
+        <text id="scene3-title" x="600" y="55" text-anchor="middle"
+              font-family="Segoe UI, system-ui, sans-serif" font-size="26" font-weight="700"
+              fill="#f5e6c8" opacity="0">Runtime Binary Patching</text>
+
+        <!-- Function label -->
+        <text id="scene3-func-label" x="600" y="105" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="16" fill="#a89e88" opacity="0">
+          foo() function prologue in memory</text>
+
+        <!-- Memory page frame -->
+        <rect id="scene3-page" x="150" y="130" width="900" height="200" rx="8"
+              fill="none" stroke="#444466" stroke-width="1.5" stroke-dasharray="8 4" opacity="0"/>
+        <text id="scene3-page-label" x="160" y="150"
+              font-family="Segoe UI, sans-serif" font-size="12" fill="#555580" opacity="0">Memory Page (r-x)</text>
+
+        <!-- 5 byte cells - original values -->
+        <!-- Cell 0 -->
+        <g class="scene3-cell" opacity="0">
+          <rect x="230" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#555580" stroke-width="2"/>
+          <rect class="scene3-cell-highlight" x="230" y="180" width="120" height="70" rx="6"
+                fill="#e8a838" opacity="0"/>
+        </g>
+        <!-- Cell 1 -->
+        <g class="scene3-cell" opacity="0">
+          <rect x="370" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#555580" stroke-width="2"/>
+          <rect class="scene3-cell-highlight" x="370" y="180" width="120" height="70" rx="6"
+                fill="#e8a838" opacity="0"/>
+        </g>
+        <!-- Cell 2 -->
+        <g class="scene3-cell" opacity="0">
+          <rect x="510" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#555580" stroke-width="2"/>
+          <rect class="scene3-cell-highlight" x="510" y="180" width="120" height="70" rx="6"
+                fill="#e8a838" opacity="0"/>
+        </g>
+        <!-- Cell 3 -->
+        <g class="scene3-cell" opacity="0">
+          <rect x="650" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#555580" stroke-width="2"/>
+          <rect class="scene3-cell-highlight" x="650" y="180" width="120" height="70" rx="6"
+                fill="#e8a838" opacity="0"/>
+        </g>
+        <!-- Cell 4 -->
+        <g class="scene3-cell" opacity="0">
+          <rect x="790" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#555580" stroke-width="2"/>
+          <rect class="scene3-cell-highlight" x="790" y="180" width="120" height="70" rx="6"
+                fill="#e8a838" opacity="0"/>
+        </g>
+
+        <!-- Original byte values -->
+        <text class="scene3-original-byte" x="290" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x55</text>
+        <text class="scene3-original-byte" x="430" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x48</text>
+        <text class="scene3-original-byte" x="570" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x89</text>
+        <text class="scene3-original-byte" x="710" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0xE5</text>
+        <text class="scene3-original-byte" x="850" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x53</text>
+
+        <!-- Lock icon -->
+        <g id="scene3-lock" opacity="0" transform="translate(90, 195)">
+          <rect id="scene3-lock-body" x="0" y="18" width="30" height="24" rx="4" fill="#e74c3c"/>
+          <path id="scene3-lock-shackle" d="M6,18 L6,10 Q6,0 15,0 Q24,0 24,10 L24,18"
+                fill="none" stroke="#e74c3c" stroke-width="4" stroke-linecap="round"/>
+          <text x="15" y="35" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="10" fill="#1a1a2e" font-weight="700">r-x</text>
+        </g>
+
+        <!-- mprotect labels -->
+        <text id="scene3-mprotect-unlock" x="105" y="170" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="11" fill="#4caf50" opacity="0">mprotect(rwx)</text>
+        <text id="scene3-mprotect-lock" x="105" y="170" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="11" fill="#e74c3c" opacity="0">mprotect(r-x)</text>
+
+        <!-- Backup container -->
+        <rect id="scene3-backup-box" x="230" y="420" width="680" height="70" rx="8"
+              fill="none" stroke="#a89e88" stroke-width="1.5" stroke-dasharray="6 4" opacity="0"/>
+        <text id="scene3-backup-label" x="570" y="415" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88" opacity="0">
+          saved bytes (backup)</text>
+
+        <!-- Backup byte values (appear after slide) -->
+        <text class="scene3-backup-byte" x="290" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x55</text>
+        <text class="scene3-backup-byte" x="430" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x48</text>
+        <text class="scene3-backup-byte" x="570" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x89</text>
+        <text class="scene3-backup-byte" x="710" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0xE5</text>
+        <text class="scene3-backup-byte" x="850" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x53</text>
+
+        <!-- JMP byte values (appear after originals leave) -->
+        <text class="scene3-jmp-byte" x="290" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0xE9</text>
+        <text class="scene3-jmp-byte" x="430" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x3C</text>
+        <text class="scene3-jmp-byte" x="570" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x02</text>
+        <text class="scene3-jmp-byte" x="710" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x00</text>
+        <text class="scene3-jmp-byte" x="850" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x00</text>
+
+        <!-- JMP label -->
+        <g id="scene3-jmp-label" opacity="0">
+          <rect x="370" y="270" width="460" height="36" rx="6"
+                fill="#2a2a3e" stroke="#e8a838" stroke-width="1.5"/>
+          <text x="600" y="294" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="15" fill="#e8a838">
+            JMP [relative offset to mock function]</text>
+        </g>
+
+        <!-- Step labels -->
+        <text id="scene3-step1" x="600" y="560" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="16" fill="#a89e88" opacity="0">
+          Save original bytes, then overwrite with JMP instruction</text>
+
+        <!-- Footnote about near jump -->
+        <text id="scene3-footnote" x="600" y="595" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="12" fill="#555580" opacity="0">
+          Near jump: 5 bytes (0xE9 + 4-byte offset) — works when mock is within ±2 GB</text>
+
+        <!-- ===== Trampoline sub-scene ===== -->
+        <g id="scene3-trampoline-group" opacity="0">
+
+          <text id="scene3-trampoline-title" x="600" y="395" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="16" fill="#a89e88" opacity="0">
+            But what if the mock is too far for a 5-byte jump?</text>
+
+          <!-- Three boxes: patched function, trampoline, mock -->
+          <!-- Box 1: Patched function -->
+          <g id="scene3-tramp-src" opacity="0">
+            <rect x="80" y="430" width="240" height="70" rx="8"
+                  fill="#22223a" stroke="#e8a838" stroke-width="2"/>
+            <text x="200" y="458" text-anchor="middle"
+                  font-family="Courier New, monospace" font-size="13" fill="#e8a838">foo() [patched]</text>
+            <text x="200" y="478" text-anchor="middle"
+                  font-family="Courier New, monospace" font-size="11" fill="#a89e88">E9 xx xx xx xx (5 bytes)</text>
+          </g>
+
+          <!-- Arrow 1: src to trampoline -->
+          <g id="scene3-tramp-arrow1" opacity="0">
+            <line x1="320" y1="465" x2="440" y2="465"
+                  stroke="#e8a838" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+            <text x="380" y="455" text-anchor="middle"
+                  font-family="Segoe UI, sans-serif" font-size="10" fill="#a89e88">JMP rel32</text>
+          </g>
+
+          <!-- Box 2: Trampoline -->
+          <g id="scene3-tramp-mid" opacity="0">
+            <rect x="450" y="430" width="260" height="70" rx="8"
+                  fill="#22223a" stroke="#4caf50" stroke-width="2"/>
+            <text x="580" y="452" text-anchor="middle"
+                  font-family="Courier New, monospace" font-size="13" fill="#4caf50">trampoline</text>
+            <text x="580" y="472" text-anchor="middle"
+                  font-family="Courier New, monospace" font-size="11" fill="#a89e88">FF 25 ... (far JMP)</text>
+            <text x="580" y="490" text-anchor="middle"
+                  font-family="Segoe UI, sans-serif" font-size="10" fill="#555580">mmap'd nearby</text>
+          </g>
+
+          <!-- Arrow 2: trampoline to mock -->
+          <g id="scene3-tramp-arrow2" opacity="0">
+            <path d="M710,465 Q790,465 850,465" stroke="#4caf50" stroke-width="2" fill="none"
+                  marker-end="url(#arrowhead-green)"/>
+            <text x="780" y="455" text-anchor="middle"
+                  font-family="Segoe UI, sans-serif" font-size="10" fill="#a89e88">far JMP</text>
+          </g>
+
+          <!-- Box 3: Mock function -->
+          <g id="scene3-tramp-dst" opacity="0">
+            <rect x="860" y="430" width="220" height="70" rx="8"
+                  fill="#22223a" stroke="#555580" stroke-width="2"/>
+            <text x="970" y="458" text-anchor="middle"
+                  font-family="Courier New, monospace" font-size="13" fill="#f5e6c8">mock()</text>
+            <text x="970" y="478" text-anchor="middle"
+                  font-family="Segoe UI, sans-serif" font-size="11" fill="#a89e88">anywhere in memory</text>
+          </g>
+
+          <!-- Distance labels -->
+          <text id="scene3-tramp-range1" x="280" y="520" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="11" fill="#e8a838" opacity="0">±2 GB reach</text>
+          <text id="scene3-tramp-range2" x="780" y="520" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="11" fill="#4caf50" opacity="0">unlimited</text>
+
+          <!-- Explanation -->
+          <text id="scene3-tramp-explain" x="600" y="560" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88" opacity="0">
+            The inline patch stays small — the trampoline handles the long-distance jump</text>
+        </g>
+      </g>
+
+      <!-- ==================== SCENE 4: Call Interception ==================== -->
+      <g id="scene4-group" opacity="0">
+        <text id="scene4-title" x="600" y="45" text-anchor="middle"
+              font-family="Segoe UI, system-ui, sans-serif" font-size="26" font-weight="700"
+              fill="#f5e6c8" opacity="0">Call Interception</text>
+
+        <!-- Box 1: Caller -->
+        <g id="scene4-caller" opacity="0">
+          <rect x="410" y="70" width="380" height="55" rx="8"
+                fill="#22223a" stroke="#555580" stroke-width="2"/>
+          <text x="600" y="95" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="15" fill="#f5e6c8">
+            <tspan fill="#a89e88">app calls</tspan> foo(1, 2)</text>
+        </g>
+
+        <!-- Arrow 1: caller to patched function -->
+        <path id="scene4-arrow1" d="M600,125 L600,145"
+              stroke="#f5e6c8" stroke-width="2" fill="none" marker-end="url(#arrowhead)" opacity="0"/>
+
+        <!-- Box 2: Patched function -->
+        <g id="scene4-function" opacity="0">
+          <rect x="410" y="150" width="380" height="55" rx="8"
+                fill="#22223a" stroke="#e8a838" stroke-width="2"/>
+          <text x="600" y="175" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="15" fill="#e8a838">
+            foo() <tspan fill="#a89e88">[patched]</tspan> 0xE9 → JMP</text>
+        </g>
+
+        <!-- Arrow 2: patched to mockFunction -->
+        <path id="scene4-arrow2" d="M600,205 L600,225"
+              stroke="#e8a838" stroke-width="2" fill="none" marker-end="url(#arrowhead-orange)" opacity="0"/>
+
+        <!-- Box 3: mockFunction -->
+        <g id="scene4-mock-fn" opacity="0">
+          <rect x="410" y="230" width="380" height="70" rx="8"
+                fill="#22223a" stroke="#e8a838" stroke-width="2"/>
+          <text x="600" y="258" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="14" fill="#e8a838">
+            Mock::mockFunction(1, 2)</text>
+          <text x="600" y="280" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="12" fill="#a89e88">
+            static method, same signature as foo()</text>
+        </g>
+
+        <!-- Arrow 3: mockFunction to MockManager -->
+        <path id="scene4-arrow3" d="M600,300 L600,320"
+              stroke="#a89e88" stroke-width="2" fill="none" marker-end="url(#arrowhead)" opacity="0"/>
+
+        <!-- Box 4: MockManager -->
+        <g id="scene4-manager" opacity="0">
+          <rect x="410" y="325" width="380" height="70" rx="8"
+                fill="#22223a" stroke="#555580" stroke-width="2"/>
+          <text x="600" y="353" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="14" fill="#a89e88">
+            MockManager::getInstance().get()</text>
+          <text x="600" y="375" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="12" fill="#a89e88">
+            retrieve active mock instance</text>
+        </g>
+
+        <!-- Arrow 4: MockManager to GMock -->
+        <path id="scene4-arrow4" d="M600,395 L600,415"
+              stroke="#a89e88" stroke-width="2" fill="none" marker-end="url(#arrowhead)" opacity="0"/>
+
+        <!-- Box 5: GMock dispatch -->
+        <g id="scene4-gmock" opacity="0">
+          <rect x="410" y="420" width="380" height="90" rx="8"
+                fill="#22223a" stroke="#4caf50" stroke-width="2"/>
+          <text x="600" y="447" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="14" fill="#f5e6c8">
+            mock->bonobomockInternalForwardFunc(1, 2)</text>
+          <text x="600" y="467" text-anchor="middle"
+                font-family="Segoe UI, sans-serif" font-size="11" fill="#a89e88">
+            same role as a MOCK_METHOD override</text>
+          <line x1="440" y1="478" x2="760" y2="478" stroke="#444466" stroke-width="1"/>
+          <text x="600" y="498" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="14" fill="#4caf50">
+            d_gmock.Invoke(1, 2) → Return(42)</text>
+        </g>
+
+        <!-- Green check -->
+        <g id="scene4-check" opacity="0">
+          <circle cx="830" cy="465" r="22" fill="none" stroke="#4caf50" stroke-width="2.5"/>
+          <path d="M818,465 L826,475 L842,455" stroke="#4caf50" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+
+        <!-- Return arrow (curved, back up to caller) -->
+        <path id="scene4-arrow-return" d="M410,465 Q200,300 410,95"
+              stroke="#4caf50" stroke-width="2" fill="none" stroke-dasharray="8 4"
+              marker-end="url(#arrowhead-green)" opacity="0"/>
+
+        <!-- Return value label -->
+        <g id="scene4-return-value" opacity="0">
+          <rect x="240" y="265" width="100" height="34" rx="6" fill="#2a2a3e" stroke="#4caf50" stroke-width="1.5"/>
+          <text x="290" y="287" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="16" fill="#4caf50" font-weight="700">42</text>
+        </g>
+
+        <!-- Explanation -->
+        <text id="scene4-explanation" x="600" y="560" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88" opacity="0">
+          Calls to foo() are redirected to the mock chain via JMP instruction</text>
+      </g>
+
+      <!-- ==================== SCENE 5: Restoration ==================== -->
+      <g id="scene5-group" opacity="0">
+        <text id="scene5-title" x="600" y="55" text-anchor="middle"
+              font-family="Segoe UI, system-ui, sans-serif" font-size="26" font-weight="700"
+              fill="#f5e6c8" opacity="0">Automatic Restoration</text>
+
+        <!-- Destructor label -->
+        <g id="scene5-destructor" opacity="0">
+          <rect x="350" y="90" width="500" height="40" rx="8"
+                fill="#2a2a3e" stroke="#555580" stroke-width="1.5"/>
+          <text x="600" y="116" text-anchor="middle"
+                font-family="Courier New, monospace" font-size="15" fill="#a89e88">
+            ~Patch() RAII destructor calls restore()</text>
+        </g>
+
+        <!-- Memory cells (showing JMP bytes initially) -->
+        <g class="scene5-cell" opacity="0">
+          <rect x="230" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#e8a838" stroke-width="2"/>
+        </g>
+        <g class="scene5-cell" opacity="0">
+          <rect x="370" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#e8a838" stroke-width="2"/>
+        </g>
+        <g class="scene5-cell" opacity="0">
+          <rect x="510" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#e8a838" stroke-width="2"/>
+        </g>
+        <g class="scene5-cell" opacity="0">
+          <rect x="650" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#e8a838" stroke-width="2"/>
+        </g>
+        <g class="scene5-cell" opacity="0">
+          <rect x="790" y="180" width="120" height="70" rx="6"
+                fill="#1e1e32" stroke="#e8a838" stroke-width="2"/>
+        </g>
+
+        <!-- JMP bytes (will fade out) -->
+        <text class="scene5-jmp-byte" x="290" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0xE9</text>
+        <text class="scene5-jmp-byte" x="430" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x3C</text>
+        <text class="scene5-jmp-byte" x="570" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x02</text>
+        <text class="scene5-jmp-byte" x="710" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x00</text>
+        <text class="scene5-jmp-byte" x="850" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#e8a838" opacity="0">0x00</text>
+
+        <!-- Backup container with saved bytes -->
+        <rect x="230" y="420" width="680" height="70" rx="8"
+              fill="none" stroke="#a89e88" stroke-width="1.5" stroke-dasharray="6 4" opacity="0" class="scene5-backup"/>
+        <text x="570" y="415" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="14" fill="#a89e88" opacity="0" class="scene5-backup">
+          saved bytes (backup)</text>
+
+        <!-- Backup bytes (will slide up) -->
+        <text class="scene5-backup-byte" x="290" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x55</text>
+        <text class="scene5-backup-byte" x="430" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x48</text>
+        <text class="scene5-backup-byte" x="570" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x89</text>
+        <text class="scene5-backup-byte" x="710" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0xE5</text>
+        <text class="scene5-backup-byte" x="850" y="462" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="18" fill="#a89e88" opacity="0">0x53</text>
+
+        <!-- Restored byte values (appear after backup slides up) -->
+        <text class="scene5-restored-byte" x="290" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x55</text>
+        <text class="scene5-restored-byte" x="430" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x48</text>
+        <text class="scene5-restored-byte" x="570" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x89</text>
+        <text class="scene5-restored-byte" x="710" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0xE5</text>
+        <text class="scene5-restored-byte" x="850" y="222" text-anchor="middle"
+              font-family="Courier New, monospace" font-size="20" font-weight="700" fill="#f5e6c8" opacity="0">0x53</text>
+
+        <!-- Cell borders change back to normal -->
+        <g class="scene5-cell-restored" opacity="0">
+          <rect x="230" y="180" width="120" height="70" rx="6" fill="none" stroke="#555580" stroke-width="2"/>
+          <rect x="370" y="180" width="120" height="70" rx="6" fill="none" stroke="#555580" stroke-width="2"/>
+          <rect x="510" y="180" width="120" height="70" rx="6" fill="none" stroke="#555580" stroke-width="2"/>
+          <rect x="650" y="180" width="120" height="70" rx="6" fill="none" stroke="#555580" stroke-width="2"/>
+          <rect x="790" y="180" width="120" height="70" rx="6" fill="none" stroke="#555580" stroke-width="2"/>
+        </g>
+
+        <!-- Restored label -->
+        <text id="scene5-restored-label" x="600" y="290" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="18" fill="#4caf50" font-weight="600" opacity="0">
+          Original function restored!</text>
+
+        <!-- Monkey mascot (actual mascot image) -->
+        <image id="scene5-monkey" href="bonobomock_mascot_transparent.png"
+               x="830" y="200" width="350" height="230"
+               preserveAspectRatio="xMidYMid meet" opacity="0"/>
+
+        <!-- Explanation -->
+        <text id="scene5-explanation" x="600" y="560" text-anchor="middle"
+              font-family="Segoe UI, sans-serif" font-size="15" fill="#a89e88" opacity="0">
+          RAII cleanup: when the mock goes out of scope, the original bytes are copied back</text>
+      </g>
+
+      <!-- ==================== PROGRESS BAR ==================== -->
+      <rect id="progress-track" x="100" y="658" width="1000" height="4" rx="2" fill="#2a2a3e"/>
+      <rect id="progress-fill" x="100" y="658" width="0" height="4" rx="2" fill="#e8a838"/>
+
+      <!-- ==================== CONTROLS ==================== -->
+      <foreignObject x="0" y="675" width="1200" height="55">
+        <div xmlns="http://www.w3.org/1999/xhtml" class="controls-wrapper">
+          <button class="play-btn" id="play-btn">Play</button>
+          <div class="scene-dots">
+            <span class="scene-dot" data-scene="1"></span>
+            <span class="scene-dot" data-scene="2"></span>
+            <span class="scene-dot" data-scene="3"></span>
+            <span class="scene-dot" data-scene="4"></span>
+            <span class="scene-dot" data-scene="5"></span>
+          </div>
+        </div>
+      </foreignObject>
+  </div>
+
+  <script src="../../libs/anime.min.js"></script>
+  <script src="animation.js"></script>
+</body>
+</html>

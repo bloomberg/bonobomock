@@ -1,0 +1,71 @@
+name: "🚀 Feature Request"
+description: "Propose a new feature or enhancement for the project."
+title: "[Feature]: <short summary of feature>"
+labels: ["feature_request"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please answer the questions below to help us understand your idea.
+
+  - type: textarea
+    id: feature_description
+    attributes:
+      label: Describe the feature and why you need it
+      description: |
+        Explain what you’d like to see added, and why it’s important or useful. What problem or limitation does this feature address?
+      placeholder: |
+        Example:
+        - Add support for running tests in parallel.
+        - This would reduce CI time significantly for large projects.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: How should it work?
+      description: |
+        Describe what the feature should do or how it should behave.
+      placeholder: |
+        Example:
+        - Introduce a `--parallel` flag for the test runner.
+        - Add a `MockAsyncFunction` helper API.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Have you tried any workarounds or alternatives?
+      description: |
+        Describe any existing solutions or partial workarounds you’ve used.
+      placeholder: "e.g., Used a custom script or third-party tool, but it’s limited."
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Platform and build environment (if applicable)
+      description: |
+        Include platform details relevant to this feature request.  
+        Examples:
+        - Platform (CPU architecture, Operating System): Linux x86_64  
+        - Bitness: 64-bit  
+        - Compiler: GCC 13.2  
+        - Build system: CMake 3.30
+      placeholder: |
+        e.g.,
+        Platform: Linux x86_64
+        Bitness: 64-bit
+        Compiler: GCC 13.2
+        Build system: CMake 3.30
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: "I have searched existing issues and discussions to avoid duplicates."
+          required: true
+        - label: "I would be interested in contributing an implementation."
+          required: false
+        

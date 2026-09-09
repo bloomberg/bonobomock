@@ -1,0 +1,3 @@
+BasedOnStyle: WebKit
+Standard: c++03
+IndentPPDirectives: BeforeHash

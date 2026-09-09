@@ -1,0 +1,33 @@
+name: "📚 Documentation Feedback"
+description: "Report an issue or suggest improvements to the documentation."
+title: "[Docs]: <short summary of feedback/issue>"
+labels: ["docs_feedback"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the documentation! Please answer the questions below to help us understand the issue.
+
+  - type: textarea
+    id: doc_issue
+    attributes:
+      label: What is the issue? How do you suggest we address it?
+      description: |
+        Describe what's wrong or unclear, and if possible, suggest how to improve it.
+      placeholder: |
+        Example:
+        - The example for Foo::bar() uses a deprecated API.
+        - Suggest updating it to use Foo::baz() instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: doc_link
+    attributes:
+      label: Paste a link to the doc (if available)
+      description: "Provide a direct link to the documentation page or section."
+      placeholder: "https://github.com/owner/repo/docs/some_section.md#heading"
+    validations:
+      required: false
+    

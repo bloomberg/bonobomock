@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: check-format
+        name: check formatting
+        entry: "bash -c 'make check-format; ret=$?; if [ $ret -ne 0 ]; then echo; echo \"Formatting issues found. Run: make format\"; fi; exit $ret'"
+        language: system
+        always_run: true
+        pass_filenames: false
