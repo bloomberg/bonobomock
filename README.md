@@ -18,7 +18,7 @@
 
 ## Documentation
 
-Review the **[project documentation](docs/index.md)** for quickstart guides, cookbook recipes, and API references.
+Review the **[project documentation](https://bloomberg.github.io/bonobomock/)** for quickstart guides, cookbook recipes, and API references.
 
 ## Contributions
 
