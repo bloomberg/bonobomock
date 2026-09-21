@@ -19,7 +19,7 @@ step up front: you build and install the library before consuming it.
 | [4. Build and run it](#4-build-and-run-it) | Configure the example against your install prefix and run `ctest` |
 
 
-Steps 3 and 4 use [`examples/cmake-quickstart/`](../../examples/cmake-quickstart),
+Steps 3 and 4 use [`examples/cmake-quickstart/`](https://github.com/bloomberg/bonobomock/blob/main/examples/cmake-quickstart/README.md),
 which is already in the clone you made in step 2 — there is nothing to type in.
 Open it alongside this page; the snippets below are excerpts from those files.
 
@@ -212,7 +212,7 @@ cmake-quickstart/
 ```
 
 See the  example's
-[README](../../examples/cmake-quickstart/README.md) for more information.
+[README](https://github.com/bloomberg/bonobomock/blob/main/examples/cmake-quickstart/README.md) for more information.
 
 ## 4. Build and run it
 
@@ -240,7 +240,7 @@ Expected output:
 `Debug` builds at `-O0`, which sidesteps inlining entirely — the simplest choice
 while you are getting started. These tests also pass unchanged with
 `-DCMAKE_BUILD_TYPE=RelWithDebInfo`; the example's
-[README](../../examples/cmake-quickstart/README.md#the-cmake) explains why, and
+[README](https://github.com/bloomberg/bonobomock/blob/main/examples/cmake-quickstart/README.md#the-cmake) explains why, and
 when you would need more than this:
 
 ```bash

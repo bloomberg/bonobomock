@@ -1,6 +1,6 @@
 # Supported Platforms
 
-BonoboMock patches machine code at function entry points, so platform support depends on three axes: **CPU architecture** (e.g., jump instruction encoding), **operating system** (e.g., memory protection, executable layout, symbol table layout), and **compiler** (e.g., ABI for virtual functions, optimization). This page documents tested combinations. For guidance on adding support for a new platform, see [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-new-platform).
+BonoboMock patches machine code at function entry points, so platform support depends on three axes: **CPU architecture** (e.g., jump instruction encoding), **operating system** (e.g., memory protection, executable layout, symbol table layout), and **compiler** (e.g., ABI for virtual functions, optimization). This page documents tested combinations. For guidance on adding support for a new platform, see [CONTRIBUTING.md](https://github.com/bloomberg/bonobomock/blob/main/CONTRIBUTING.md#adding-a-new-platform).
 
 ## C++ Standard Compatibility
 
