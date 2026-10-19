@@ -256,11 +256,15 @@ fi
 # same flags/ABI as BDE, and point CMAKE_PREFIX_PATH at our install prefix so that
 # find_package(bsl/bdl) and find_package(GTest) all resolve to the libraries we
 # just built rather than to anything preinstalled on the system.
+#
+# The standard is selected through BDE_BUILD_TARGET_CPP<N>, not CMAKE_CXX_STANDARD:
+# the toolchain's presets set CMAKE_CXX_STANDARD as a normal variable (17 unless
+# that flag is on), which shadows a -DCMAKE_CXX_STANDARD cache entry.
 cmake -B "${DIR_BUILD}/bonobomock" -S "${DIR_ROOT}" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="${DIR_THIRDPARTY}/bde-tools/BdeBuildSystem/toolchains/linux/gcc-default.cmake" \
     -DCMAKE_C_COMPILER="${CC_BIN}" \
     -DCMAKE_CXX_COMPILER="${CXX_BIN}" \
-    -DCMAKE_CXX_STANDARD="${CXX_STANDARD}" \
+    -DBDE_BUILD_TARGET_CPP"${CXX_STANDARD}"=ON \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_PREFIX_PATH="${DIR_INSTALL};${DIR_INSTALL}/lib64" \
     -DCMAKE_INSTALL_PREFIX="${DIR_INSTALL}"

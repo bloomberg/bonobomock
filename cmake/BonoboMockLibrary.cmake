@@ -94,8 +94,10 @@ function(_bonobomock_embed_static_demangler target)
         if(NOT EXISTS "${resolved}")
             continue()
         endif()
-        execute_process(COMMAND "${CMAKE_AR}" t "${resolved}" cp-demangle.o
-                        OUTPUT_VARIABLE member OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+        execute_process(
+            COMMAND "${CMAKE_AR}" t "${resolved}" cp-demangle.o
+            OUTPUT_VARIABLE member
+            OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
         if(member STREQUAL "cp-demangle.o")
             set(archive "${resolved}")
             break()

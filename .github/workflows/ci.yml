@@ -1,0 +1,117 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright 2026 Bloomberg Finance LP
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # BonoboMock requires CMake >= 4.0, newer than either distro ships.
+  CMAKE_VERSION: "4.4.2"
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install formatters
+        run: |
+          pip install "clang-format~=21.1" "cmakelang[YAML]==0.6.13"
+          # The Makefile invokes the versioned binary name that LLVM's apt packages use.
+          ln -s "$(command -v clang-format)" "$(dirname "$(command -v clang-format)")/clang-format-21"
+      - run: make check-format
+
+  ubuntu:
+    name: ubuntu-24.04 (C++${{ matrix.cxx }})
+    # BonoboMock patches x86-64 machine code at runtime, so tests need a real x86-64 host.
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [17, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential ninja-build pkg-config git python3 python3-pip
+          pip3 install --user --break-system-packages "cmake==${CMAKE_VERSION}"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      # BDE and GoogleTest take 5-9 minutes to build from source; BonoboMock about one.
+      # build-linux.sh skips the dependency build when the cached sentinels match.
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            thirdparty
+            install
+            build/bde
+            build/googletest
+          key: deps-ubuntu-24.04-cpp${{ matrix.cxx }}-${{ hashFiles('bin/build-linux.sh') }}
+      - name: Build and test BonoboMock
+        run: ./bin/build-linux.sh --cxx-standard "${{ matrix.cxx }}"
+      # Proves the docs/project-setup/cmake.md walkthrough works against the install.
+      # BonoboMock installs outside the cached prefix so a stale copy can't be restored
+      # into it and shadow the one under test.
+      - name: Verify cmake-quickstart example
+        run: |
+          cmake --install build/bonobomock --prefix "$RUNNER_TEMP/bonobomock"
+          cmake -B "$RUNNER_TEMP/quickstart" -S examples/cmake-quickstart -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD="${{ matrix.cxx }}" \
+            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/bonobomock;$PWD/install"
+          cmake --build "$RUNNER_TEMP/quickstart"
+          ctest --test-dir "$RUNNER_TEMP/quickstart" --output-on-failure
+      # GCC 13's ASAN crashes at startup under the runner kernel's default 32 bits of
+      # mmap randomization: https://github.com/actions/runner-images/issues/9491
+      - name: Reduce mmap randomization for ASAN
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      # Debug (-O0) because patching must also work without inlining. Only BonoboMock
+      # is instrumented; the cached BDE and GoogleTest are not, which both sanitizers
+      # tolerate.
+      - name: Build and test BonoboMock with ASAN and UBSAN
+        run: |
+          # ASAN's instrumentation tables trip the toolchain's -Wlarger-than-100000 under
+          # -Werror. The toolchain FORCEs its flags, so the override is appended after
+          # project() instead of passed with -D.
+          cat > "$RUNNER_TEMP/sanitize-flags.cmake" <<'EOF'
+          string(APPEND CMAKE_C_FLAGS " -Wno-larger-than")
+          string(APPEND CMAKE_CXX_FLAGS " -Wno-larger-than")
+          EOF
+          cmake -B build/bonobomock-sanitize -S . -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/thirdparty/bde-tools/BdeBuildSystem/toolchains/linux/gcc-default.cmake" \
+            -DCMAKE_PROJECT_INCLUDE="$RUNNER_TEMP/sanitize-flags.cmake" \
+            -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+            -DBDE_BUILD_TARGET_CPP${{ matrix.cxx }}=ON \
+            -DBDE_BUILD_TARGET_ASAN=ON -DBDE_BUILD_TARGET_UBSAN=ON \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_PREFIX_PATH="$PWD/install;$PWD/install/lib64"
+          cmake --build build/bonobomock-sanitize
+          ctest --test-dir build/bonobomock-sanitize --output-on-failure

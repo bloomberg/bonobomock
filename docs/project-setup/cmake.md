@@ -177,7 +177,7 @@ prefix, which is where `find_package` resolves BDE and GoogleTest from.
 ```bash
 cmake -B build/bonobomock -S . -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE=thirdparty/bde-tools/BdeBuildSystem/toolchains/linux/gcc-default.cmake \
-    -DCMAKE_CXX_STANDARD=17 \
+    -DBDE_BUILD_TARGET_CPP17=ON \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_PREFIX_PATH="$PWD/install" \
     -DCMAKE_INSTALL_PREFIX="$PWD/install"
